@@ -9,11 +9,20 @@ Steps
 2. Open Developer Tools (F12) → Console.
 3. Open the file `download-images-snippet.js` from the repository, copy all its contents and paste it into the Console.
 4. Press Enter to load the snippet; it will expose a global `runAll()` function.
-5. Call `runAll()` to begin processing items found by the FIRST selector. The script will:
+5. Call `badooScraper.startScrape()` to begin processing items found by the FIRST selector. The script will:
    - click each matched list item (FIRST selector), open the profile,
    - scroll the profile content area using the configured SCROLLBAR selector to load images,
    - fall back to clicking the gallery-open button (SECOND selector) if the scrollbar is not present,
-   - extract image URLs from the scroller or the fullscreen gallery (or the THIRD selector area) and trigger browser downloads.
+   - extract image URLs from the scroller or the fullscreen gallery (or the THIRD selector area) and store them in memory (no automatic downloads).
+
+Controls exposed:
+- Floating UI: a small panel appears bottom-right with `Start`, `Stop`, and `Export All` buttons.
+- Programmatic API: `badooScraper.startScrape()`, `badooScraper.stopScrape()`, `badooScraper.exportProfileImages(index)`, `badooScraper.exportAllCollectedImages()`, and `badooScraper.state` (collected profiles array).
+
+Export workflow:
+- Run the scraper (`Start`). It will collect image URLs per profile and update the `Collected` count in the UI.
+- When you want to stop, press `Stop` (or call `badooScraper.stopScrape()`). Scraper will finish the current profile then stop.
+- Use `Export All` or `badooScraper.exportAllCollectedImages()` to trigger downloads of all collected profile images.
 
 Notes & Caveats
 ---------------
