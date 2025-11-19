@@ -11,8 +11,9 @@ Steps
 4. Press Enter to load the snippet; it will expose a global `runAll()` function.
 5. Call `runAll()` to begin processing items found by the FIRST selector. The script will:
    - click each matched list item (FIRST selector), open the profile,
-   - click the gallery-open button (SECOND selector),
-   - extract image URLs from the fullscreen gallery or the THIRD selector area and trigger browser downloads.
+   - scroll the profile content area using the configured SCROLLBAR selector to load images,
+   - fall back to clicking the gallery-open button (SECOND selector) if the scrollbar is not present,
+   - extract image URLs from the scroller or the fullscreen gallery (or the THIRD selector area) and trigger browser downloads.
 
 Notes & Caveats
 ---------------

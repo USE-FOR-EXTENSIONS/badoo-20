@@ -6,6 +6,8 @@
   const FIRST = "#page-container > div > div > div:nth-child(3) > div.people-nearby__content > div:nth-child(1) > ul > li:nth-child(1) > div > button > span.csms-user-list-cell__content > span.csms-user-list-cell__media > span > span > span > span > span";
   const SECOND = "#app-root > div > div.modal-container > div > div > div > div > div > div > div > div > div.profile-card-full__content > div > div.profile-card__content-scroller > div > div > div:nth-child(1) > button";
   const THIRD = "#fullscreen-gallery > div.slider-gallery > div.slider-gallery-pages.is-horizontal.is-animated > div:nth-child(2)";
+  // New scrollbar selector (profile content scroller) provided by user — used to scroll
+  const SCROLLBAR = "#app-root > div > div.modal-container > div > div > div > div > div > div > div > div > div > div.profile-card-full__content > div > div.profile-card__scroll-bar.profile-card__scroll-bar--centered";
 
   function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
@@ -55,24 +57,61 @@
     await sleep(300);
     el.click();
     await sleep(600);
-    const btn = await waitForSelector(SECOND, 3000);
-    if(btn){ btn.click(); }
-    await sleep(700);
-    const gallery = await waitForSelector('#fullscreen-gallery', 4000);
-    if(!gallery){
-      console.warn('No gallery for item', idx+1);
-      // try to close possible modal
-      document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', keyCode:27, which:27}));
-      await sleep(300);
-      return;
-    }
-    await sleep(400);
-    const urls = extractUrlsFromGallery(gallery);
-    if(!urls.length){
-      // try third selector area specifically
-      const special = document.querySelector(THIRD);
-      const specialImgs = special ? Array.from(special.querySelectorAll('img')).map(i=>i.src).filter(Boolean) : [];
-      if(specialImgs.length) urls.push(...specialImgs);
+    // Try to find the profile scrollbar and scroll it to load all images
+    const scroller = await waitForSelector(SCROLLBAR, 3000);
+    let urls = [];
+    if(scroller){
+      // Scroll the scroller element progressively and collect images
+      const collected = new Set();
+      const maxSteps = 40;
+      let lastCount = 0;
+      for(let step=0; step<maxSteps; step++){
+        // collect current images inside scroller
+        Array.from(scroller.querySelectorAll('img')).forEach(img => {
+          const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy');
+          if(src) collected.add(src);
+        });
+        // also check background-images in children
+        Array.from(scroller.querySelectorAll('div')).forEach(d => {
+          const style = d && d.style && d.style.backgroundImage;
+          if(style){
+            const m = style.match(/url\(["']?(.*?)["']?\)/);
+            if(m && m[1]) collected.add(m[1]);
+          }
+        });
+
+        // attempt scroll further
+        try{
+          scroller.scrollTop = scroller.scrollTop + Math.max(scroller.clientHeight, 300);
+        }catch(e){ /* ignore */ }
+        await sleep(400);
+        if(collected.size === lastCount){
+          // no new images — try a couple more iterations then break
+          if(step >= maxSteps - 3) break;
+        }
+        lastCount = collected.size;
+      }
+      urls = Array.from(collected);
+    } else {
+      // Fallback: if scroller not found, try opening gallery as before
+      const btn = await waitForSelector(SECOND, 3000);
+      if(btn){ btn.click(); }
+      await sleep(700);
+      const gallery = await waitForSelector('#fullscreen-gallery', 4000);
+      if(gallery){
+        await sleep(400);
+        urls = extractUrlsFromGallery(gallery);
+        if(!urls.length){
+          const special = document.querySelector(THIRD);
+          const specialImgs = special ? Array.from(special.querySelectorAll('img')).map(i=>i.src).filter(Boolean) : [];
+          if(specialImgs.length) urls.push(...specialImgs);
+        }
+      } else {
+        console.warn('No gallery or scroller for item', idx+1);
+        document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', keyCode:27, which:27}));
+        await sleep(300);
+        return;
+      }
     }
     if(!urls.length){ console.warn('No images found in gallery for item', idx+1); }
     for(let i=0;i<urls.length;i++){
