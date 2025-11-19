@@ -167,19 +167,56 @@
       const stopBtn = document.createElement('button'); stopBtn.textContent = 'Stop'; stopBtn.style.marginRight='6px';
       const exportBtn = document.createElement('button'); exportBtn.textContent = 'Export All';
       const info = document.createElement('div'); info.style.marginTop='6px'; info.textContent = 'Collected: 0';
+      // per-profile list container
+      const listContainer = document.createElement('div');
+      listContainer.id = 'badoo-scraper-list';
+      listContainer.style.maxHeight = '240px';
+      listContainer.style.overflow = 'auto';
+      listContainer.style.marginTop = '8px';
+      listContainer.style.background = 'rgba(255,255,255,0.03)';
+      listContainer.style.padding = '6px';
+      listContainer.style.borderRadius = '6px';
+      listContainer.style.minWidth = '220px';
 
       startBtn.onclick = ()=>{ startScrape(); };
       stopBtn.onclick = ()=>{ stopScrape(); };
       exportBtn.onclick = ()=>{ exportAllCollectedImages(); };
 
-      panel.appendChild(startBtn); panel.appendChild(stopBtn); panel.appendChild(exportBtn); panel.appendChild(info);
+      panel.appendChild(startBtn); panel.appendChild(stopBtn); panel.appendChild(exportBtn); panel.appendChild(info); panel.appendChild(listContainer);
       document.body.appendChild(panel);
 
       const iv = setInterval(()=>{
         const count = window.__badoo_collectedProfiles.length || 0;
         info.textContent = `Collected: ${count}`;
+        renderCollectedList(listContainer);
         if(!document.getElementById('badoo-scraper-ui')) clearInterval(iv);
       }, 800);
+    }
+
+    function renderCollectedList(container){
+      if(!container) container = document.getElementById('badoo-scraper-list');
+      if(!container) return;
+      // clear
+      container.innerHTML = '';
+      const arr = window.__badoo_collectedProfiles || [];
+      if(arr.length === 0){
+        const empty = document.createElement('div'); empty.style.opacity = '0.7'; empty.textContent = 'No profiles collected yet'; container.appendChild(empty); return;
+      }
+      arr.forEach((p, idx) => {
+        const row = document.createElement('div');
+        row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.marginBottom = '6px';
+        const left = document.createElement('div'); left.style.flex='1'; left.style.marginRight='6px';
+        const title = document.createElement('div'); title.textContent = `#${p.index} — ${p.urls.length} images`; title.style.fontSize='12px';
+        left.appendChild(title);
+        const btns = document.createElement('div');
+        const ex = document.createElement('button'); ex.textContent = 'Export'; ex.style.marginRight='4px';
+        const rem = document.createElement('button'); rem.textContent = 'Remove'; rem.style.marginLeft='2px';
+        ex.onclick = ()=>{ exportProfileImages(idx); };
+        rem.onclick = ()=>{ window.__badoo_collectedProfiles.splice(idx,1); renderCollectedList(container); };
+        btns.appendChild(ex); btns.appendChild(rem);
+        row.appendChild(left); row.appendChild(btns);
+        container.appendChild(row);
+      });
     }
 
     // expose control functions

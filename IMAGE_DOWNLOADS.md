@@ -16,7 +16,7 @@ Steps
    - extract image URLs from the scroller or the fullscreen gallery (or the THIRD selector area) and store them in memory (no automatic downloads).
 
 Controls exposed:
-- Floating UI: a small panel appears bottom-right with `Start`, `Stop`, and `Export All` buttons.
+- Floating UI: a small panel appears bottom-right with `Start`, `Stop`, `Export All`, and a per-profile list showing collected profiles. Each profile row has `Export` and `Remove` buttons.
 - Programmatic API: `badooScraper.startScrape()`, `badooScraper.stopScrape()`, `badooScraper.exportProfileImages(index)`, `badooScraper.exportAllCollectedImages()`, and `badooScraper.state` (collected profiles array).
 
 Export workflow:
