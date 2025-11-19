@@ -6,6 +6,19 @@
   let __ps_running = false;
   let __ps_stop = false;
 
+  // Specific selectors provided by user
+  const GALLERY_BUTTON_SELECTOR = '#app-root > div > div.modal-container > div > div > div > div > div > div > div > div > div > div.profile-card-full__content > div > div.profile-card__content-scroller > div > div > div:nth-child(1) > button > span > span > div';
+  const FULLSCREEN_GALLERY_SELECTOR = '#fullscreen-gallery';
+
+  async function waitForSelector(selector, timeout = 2000){
+    const start = Date.now();
+    while(Date.now() - start < timeout){
+      try{ const el = document.querySelector(selector); if(el) return el; }catch(e){}
+      await sleep(150);
+    }
+    return null;
+  }
+
   function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
   function findNearbyUL(){ return document.querySelector(FIRST) || document.querySelector('ul.csms-user-list') || null; }
@@ -49,9 +62,20 @@
       const id = idBtn ? (idBtn.getAttribute('data-qa-user-id')||'') : '';
       const name = nameEl ? (nameEl.innerText || nameEl.textContent || '').trim() : '';
       const age = ageEl ? (ageEl.innerText || ageEl.textContent || '').trim().replace(/^,\s*/,'') : '';
-      // try to open gallery if possible
-      try{ const main = root.querySelector('img'); if(main){ main.click(); await sleep(250); } }catch(e){}
-      const galleryRoot = document.querySelector('#fullscreen-gallery') || document.body;
+      // try to open gallery: first click the specific gallery-open button (user-provided selector)
+      try{
+        const galleryBtn = await waitForSelector(GALLERY_BUTTON_SELECTOR, 1200);
+        if(galleryBtn){
+          try{ galleryBtn.click(); await sleep(300); }catch(e){}
+        } else {
+          // fallback: try clicking a main image or thumbnail
+          const main = root.querySelector('img'); if(main){ try{ main.click(); await sleep(250); }catch(e){} }
+        }
+      }catch(e){}
+
+      // wait for the fullscreen slider/gallery to appear and use it as the extraction root
+      let galleryRoot = await waitForSelector(FULLSCREEN_GALLERY_SELECTOR, 2000);
+      if(!galleryRoot){ galleryRoot = document.querySelector('.profile-card-full__gallery') || document.body; }
       const imgs = await loadAllProfileGallery(galleryRoot, {maxSteps:20, stepDelay:300});
       const uniq = Array.from(new Set(imgs)).map(u => u && u.startsWith('//') ? window.location.protocol + u : u).filter(Boolean);
       return { id, name, age, images: uniq.slice(0,500), ts: Date.now() };
