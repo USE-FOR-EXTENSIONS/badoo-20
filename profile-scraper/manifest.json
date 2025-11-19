@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Badoo Profile Scraper",
+  "version": "0.1.0",
+  "description": "Visit each profile on Nearby, collect that profile's images (no auto-download). Export images on demand into profile folders.",
+  "permissions": ["storage","scripting","activeTab","downloads","downloads.open"],
+  "host_permissions": ["*://*.badoo.com/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["*://*.badoo.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Badoo Profile Scraper",
+    "default_popup": "popup.html"
+  }
+}
