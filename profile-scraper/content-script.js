@@ -33,20 +33,43 @@
 
   async function loadAllProfileGallery(root, {maxSteps=20, stepDelay=300} = {}){
     try{
-      const selectors = ['.csms-profile-media','.profile-photos','.csms-gallery','.profile-card-full__gallery'];
+      // Prefer known gallery/slider selectors including slider-gallery-pages
+      const selectors = ['.slider-gallery-pages', '.slider-gallery-page', '.csms-profile-media', '.profile-photos', '.csms-gallery', '.profile-card-full__gallery'];
       let container = null;
       for(const s of selectors){ try{ const el = root.querySelector(s); if(el){ container = el; break; } }catch(e){} }
       if(!container) container = root;
       const seen = new Set(); let noNew=0;
       for(let step=0; step<maxSteps; step++){
-        Array.from(container.querySelectorAll('img')).forEach(i=>{ if(i && i.src) seen.add(i.src); });
-        Array.from(container.querySelectorAll('*')).forEach(el=>{ try{ const cs = window.getComputedStyle && window.getComputedStyle(el); const bg = (el.style && el.style.backgroundImage) || (cs && cs.backgroundImage) || ''; if(bg && bg !== 'none'){ const m=/url\(["']?(.*?)["']?\)/.exec(bg); if(m && m[1]) seen.add(m[1]); } }catch(e){} });
+        // collect <img> sources including common multimedia selectors and data-src/data-lazy fallbacks
+        const imgs = Array.from(container.querySelectorAll('img.multimedia-image__image, img[data-qa="multimedia-image"], img'));
+        imgs.forEach(i=>{
+          try{
+            const src = i.src || i.getAttribute('data-src') || i.getAttribute('data-lazy') || i.getAttribute('src') || '';
+            if(src) seen.add(src.startsWith('//') ? (location.protocol + src) : src);
+          }catch(e){}
+        });
+        // also check for background-image styles
+        Array.from(container.querySelectorAll('*')).forEach(el=>{ try{ const cs = window.getComputedStyle && window.getComputedStyle(el); const bg = (el.style && el.style.backgroundImage) || (cs && cs.backgroundImage) || ''; if(bg && bg !== 'none'){ const m=/url\(["']?(.*?)["']?\)/.exec(bg); if(m && m[1]) seen.add(m[1].startsWith('//') ? (location.protocol + m[1]) : m[1]); } }catch(e){} });
         if(seen.size === 0) noNew++; else noNew = 0;
         if(noNew >= 3) break;
-        // try to advance gallery
+        // try to advance gallery: click next buttons inside slider, or arrow controls, or keyboard
         let advanced = false;
-        try{ const next = container.querySelector('button[aria-label*="next" i], .next, .gallery-next'); if(next){ next.click(); advanced=true; } }catch(e){}
-        if(!advanced){ try{ container.scrollLeft = (container.scrollLeft || 0) + Math.max(container.clientWidth*0.7,200); advanced = true; }catch(e){} }
+        try{
+          const nextLocal = container.querySelector('button[aria-label*="next" i], button[title*="Next" i], .next, .slider-next, .gallery-next, .slick-next');
+          if(nextLocal){ try{ nextLocal.click(); advanced = true; }catch(e){} }
+        }catch(e){}
+        if(!advanced){
+          try{
+            const globalNext = document.querySelector('button[aria-label*="next" i], button[title*="Next" i], .swiper-button-next, .gallery-next, .slick-next, .csms-gallery__next');
+            if(globalNext){ globalNext.click(); advanced = true; }
+          }catch(e){}
+        }
+        if(!advanced){
+          try{ const ev = new KeyboardEvent('keydown', {key:'ArrowRight', code:'ArrowRight', keyCode:39, which:39, bubbles:true}); (document.activeElement||document.body||document).dispatchEvent(ev); advanced = true; }catch(e){}
+        }
+        if(!advanced){
+          try{ if(typeof container.scrollLeft === 'number' && container.scrollWidth > container.clientWidth) container.scrollLeft += Math.max(container.clientWidth*0.7,200); else if(typeof container.scrollTop === 'number' && container.scrollHeight > container.clientHeight) container.scrollTop += Math.max(container.clientHeight*0.7,200); else window.scrollBy(0,200); }catch(e){}
+        }
         await sleep(stepDelay);
       }
       return Array.from(seen);
